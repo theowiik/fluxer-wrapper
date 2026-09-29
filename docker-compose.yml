@@ -73,11 +73,11 @@ services:
     command:
       - |
         while true; do
-          [ -s /logs/access.log ] && goaccess /logs/access.log -o /stats/index.html.tmp \
+          [ -s /logs/access.log ] && goaccess /logs/access.log -o /stats/.next.html \
             --log-format='{ "ts": "%x.%^", "request": { "client_ip": "%h", "proto": "%H", "method": "%m", "host": "%v", "uri": "%U", "headers": { "User-Agent": ["%u"], "Referer": ["%R"] } }, "duration": "%T", "size": "%b", "status": "%s", "resp_headers": { "Content-Type": ["%M"] } }' \
             --date-format=%s --time-format=%s --html-report-title='Fluxer traffic' \
             --ignore-panel=KEYPHRASES >/dev/null 2>&1 \
-          && mv /stats/index.html.tmp /stats/index.html
+          && mv /stats/.next.html /stats/index.html
           sleep 60
         done
     volumes:
