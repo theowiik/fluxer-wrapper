@@ -34,6 +34,7 @@ A reusable wrapper that runs a self-hosted [Fluxer](https://docs.fluxer.app/oper
 - **Never fork Fluxer's compose files or installer.** Pass flags or `.env` keys instead. Upgrades go through `install.sh --update`.
 - **No secrets in the repo.** `.env` is gitignored. Fluxer's secrets live only in `FLUXER_DIR/.env` on the server.
 - **Keep both proxy modes working.** Anything added to the site goes in `caddy/fluxer.caddy`. Use `client_ip` (not `remote_ip` / `{remote_host}`) so behind mode sees the visitor, not the proxy.
+- **Never trust the leftmost `X-Forwarded-For` entry.** Behind mode keeps `trusted_proxies_strict`; without it a visitor can spoof a LAN IP and bypass the allowlists and bans. Test it with a spoofed header after touching the proxy config.
 - **Match Fluxer's reverse-proxy requirements** ([docs](https://docs.fluxer.app/operator/reverse-proxy/)): forward all paths unchanged, websockets, replace `X-Forwarded-For`, bodies ≥ 512 MB, idle sockets for about 1 h, leave `Sec-Fetch-Site` alone, add no CSP. The README table tracks this; update it when you change the proxy.
 - **Safe defaults.** The site starts LAN-only (`SITE_ALLOW_CIDRS=private_ranges`), and `/admin` is allowlisted. Don't loosen defaults.
 - **Line endings are LF** (`.gitattributes`). Makefile recipes need tabs.

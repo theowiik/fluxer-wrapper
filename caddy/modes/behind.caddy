@@ -6,6 +6,10 @@
 		# comes from the proxy in front. Everyone else's header is ignored.
 		trusted_proxies static {$TRUSTED_PROXIES}
 		client_ip_headers X-Forwarded-For
+		# Read the header right to left. Proxies like NPM append the real address
+		# to whatever the visitor sent, so the leftmost entry is attacker-controlled
+		# ("X-Forwarded-For: 192.168.0.50" would pass the LAN allowlist and dodge bans).
+		trusted_proxies_strict
 	}
 	crowdsec {
 		api_url http://127.0.0.1:8081
