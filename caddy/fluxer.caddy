@@ -21,6 +21,17 @@ request_body {
 	not client_ip {$ADMIN_ALLOW_CIDRS}
 }
 
+# Paths scanners probe that Fluxer never serves. Fluxer's web app answers 200
+# to any unknown path, so without this CrowdSec never sees the 404s its probing
+# scenarios need and scanners are never banned.
+@scanner {
+	path *.php *.php7 *.asp *.aspx *.jsp *.cgi *.sql *.bak *.old *.swp
+	path /.env* /.git /.git/* /.svn/* /.hg/* /.aws/* /.ssh/* /.vscode/* /.idea/*
+	path /.DS_Store /.htaccess /.htpasswd
+	path /wp-* /wordpress/* /phpmyadmin* /pma/* /myadmin/* /cgi-bin/*
+	path /server-status /server-info /actuator* /solr/* /owa/* /boaform/*
+}
+
 # Traffic dashboard written by the goaccess service.
 @stats path /_stats /_stats/*
 
@@ -28,6 +39,9 @@ request_body {
 route {
 	# Banned IPs get a 403 before anything else happens.
 	crowdsec
+
+	# Real 404s for scanner paths, so CrowdSec can detect and ban them.
+	respond @scanner 404
 
 	# Site allowlist (LAN-only until you open it in .env).
 	respond @outsider "Not open yet." 403
