@@ -1,4 +1,7 @@
 filenames:
   - /var/log/caddy/*.log
+# CrowdSec usually starts before Caddy has written its first log line. Without
+# this it finds no file at startup and never picks the log up.
+force_inotify: true
 labels:
   type: caddy
