@@ -67,6 +67,8 @@ incus config device add fluxer lk-udp   proxy nat=true listen=udp:$HOST_IP:7882 
 
 On your router, forward the same five ports to `HOST_IP`.
 
+**If a reverse proxy on the host already owns 80/443** (for example Nginx Proxy Manager), skip the `http`, `https` and `http3` devices. Use `PROXY_MODE=behind` instead, and point the proxy at `VM_IP:80`; see the README. Only the two LiveKit devices are needed.
+
 ## 5. Block the instance from your LAN
 
 This is what makes the isolation real. The rules below:

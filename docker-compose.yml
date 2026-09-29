@@ -41,16 +41,19 @@ services:
     build: ./caddy
     restart: unless-stopped
     # Host networking: sees real client IPs (IPv4 and IPv6) and reaches Fluxer's
-    # edge and CrowdSec on loopback. Publishes 80/tcp, 443/tcp, 443/udp.
+    # edge and CrowdSec on loopback. Listens on 80/443 (direct) or BEHIND_PORT (behind).
     network_mode: host
     environment:
+      PROXY_MODE: ${PROXY_MODE:-direct}
       FLUXER_DOMAIN: ${FLUXER_DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL}
       CROWDSEC_BOUNCER_KEY: ${CROWDSEC_BOUNCER_KEY}
       SITE_ALLOW_CIDRS: ${SITE_ALLOW_CIDRS:-private_ranges}
       ADMIN_ALLOW_CIDRS: ${ADMIN_ALLOW_CIDRS:-private_ranges}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-private_ranges}
+      BEHIND_PORT: ${BEHIND_PORT:-80}
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy:/etc/caddy:ro
       - ./logs/caddy:/var/log/caddy
       - caddy-data:/data
       - caddy-config:/config

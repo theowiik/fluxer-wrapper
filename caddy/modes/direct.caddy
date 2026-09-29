@@ -1,0 +1,11 @@
+{
+	email {$ACME_EMAIL}
+	crowdsec {
+		api_url http://127.0.0.1:8081
+		api_key {$CROWDSEC_BOUNCER_KEY}
+	}
+}
+
+{$FLUXER_DOMAIN} {
+	import /etc/caddy/fluxer.caddy
+}

@@ -1,0 +1,18 @@
+{
+	# The proxy in front handles HTTPS and certificates.
+	auto_https off
+	servers {
+		# Take the visitor's IP from X-Forwarded-For, but only when the request
+		# comes from the proxy in front. Everyone else's header is ignored.
+		trusted_proxies static {$TRUSTED_PROXIES}
+		client_ip_headers X-Forwarded-For
+	}
+	crowdsec {
+		api_url http://127.0.0.1:8081
+		api_key {$CROWDSEC_BOUNCER_KEY}
+	}
+}
+
+http://:{$BEHIND_PORT} {
+	import /etc/caddy/fluxer.caddy
+}

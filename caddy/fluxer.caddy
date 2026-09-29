@@ -1,0 +1,42 @@
+# Site body shared by both modes. Uses client_ip, which is the connecting
+# address in direct mode and the forwarded visitor address in behind mode.
+
+# JSON access log: read by CrowdSec, and by you (make access).
+log {
+	output file /var/log/caddy/access.log {
+		roll_size 50MiB
+		roll_keep 10
+	}
+	format json
+}
+
+# Uploads can be up to 512 MB.
+request_body {
+	max_size 512MB
+}
+
+@outsider not client_ip {$SITE_ALLOW_CIDRS}
+@admin_outsider {
+	path /admin /admin/*
+	not client_ip {$ADMIN_ALLOW_CIDRS}
+}
+
+# Evaluated top to bottom.
+route {
+	# Banned IPs get a 403 before anything else happens.
+	crowdsec
+
+	# Site allowlist (LAN-only until you open it in .env).
+	respond @outsider "Not open yet." 403
+
+	# Admin dashboard only from allowed networks.
+	respond @admin_outsider 404
+
+	# Websockets (/gateway, /livekit/*) are proxied automatically and are not
+	# subject to idle timeouts. Fluxer sends its own CSP; don't add one here.
+	reverse_proxy 127.0.0.1:8080 {
+		# Overwrite, never trust, whatever the visitor sent.
+		header_up X-Forwarded-For {client_ip}
+		flush_interval -1
+	}
+}
