@@ -1,0 +1,67 @@
+# docker compose up -d
+#
+#   init     – first run: installs Fluxer with the official installer (proxy mode,
+#              edge on 127.0.0.1:8080). Later runs: makes sure it's up.
+#   crowdsec – reads Caddy's access log, decides who to ban.
+#   caddy    – TLS, access log, allowlists, and enforces CrowdSec bans.
+
+x-fluxer-dir: &fluxer-dir ${FLUXER_DIR:-/opt/fluxer}
+
+services:
+  init:
+    build: ./init
+    working_dir: *fluxer-dir
+    environment:
+      FLUXER_DOMAIN: ${FLUXER_DOMAIN:?set FLUXER_DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+      FLUXER_DIR: *fluxer-dir
+    volumes:
+      # Root-equivalent. Only used to run Fluxer's installer, then the container exits.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Same path inside and out, so Fluxer's bind mounts resolve on the host.
+      - ${FLUXER_DIR:-/opt/fluxer}:${FLUXER_DIR:-/opt/fluxer}
+    restart: "no"
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    restart: unless-stopped
+    environment:
+      COLLECTIONS: crowdsecurity/caddy crowdsecurity/base-http-scenarios crowdsecurity/http-cve
+      BOUNCER_KEY_caddy: ${CROWDSEC_BOUNCER_KEY:?set CROWDSEC_BOUNCER_KEY in .env}
+    # Local API for Caddy's bouncer. Loopback only; 8080 on the host is Fluxer.
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      - ./logs/caddy:/var/log/caddy:ro
+      - crowdsec-data:/var/lib/crowdsec/data
+      - crowdsec-config:/etc/crowdsec
+
+  caddy:
+    build: ./caddy
+    restart: unless-stopped
+    # Host networking: sees real client IPs (IPv4 and IPv6) and reaches Fluxer's
+    # edge and CrowdSec on loopback. Publishes 80/tcp, 443/tcp, 443/udp.
+    network_mode: host
+    environment:
+      FLUXER_DOMAIN: ${FLUXER_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+      CROWDSEC_BOUNCER_KEY: ${CROWDSEC_BOUNCER_KEY}
+      SITE_ALLOW_CIDRS: ${SITE_ALLOW_CIDRS:-private_ranges}
+      ADMIN_ALLOW_CIDRS: ${ADMIN_ALLOW_CIDRS:-private_ranges}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./logs/caddy:/var/log/caddy
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      crowdsec:
+        condition: service_started
+
+volumes:
+  caddy-data:
+  caddy-config:
+  crowdsec-data:
+  crowdsec-config:
