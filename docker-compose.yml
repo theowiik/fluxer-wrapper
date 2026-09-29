@@ -55,6 +55,7 @@ services:
     volumes:
       - ./caddy:/etc/caddy:ro
       - ./logs/caddy:/var/log/caddy
+      - ./logs/stats:/srv/stats/_stats:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
@@ -62,6 +63,26 @@ services:
         condition: service_completed_successfully
       crowdsec:
         condition: service_started
+
+  # Traffic dashboard at /_stats/ (admin allowlist only), rebuilt every minute
+  # from Caddy's access log. Uses client_ip so behind mode shows real visitors.
+  goaccess:
+    image: allinurl/goaccess:latest
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          [ -s /logs/access.log ] && goaccess /logs/access.log -o /stats/index.html.tmp \
+            --log-format='{ "ts": "%x.%^", "request": { "client_ip": "%h", "proto": "%H", "method": "%m", "host": "%v", "uri": "%U", "headers": { "User-Agent": ["%u"], "Referer": ["%R"] } }, "duration": "%T", "size": "%b", "status": "%s", "resp_headers": { "Content-Type": ["%M"] } }' \
+            --date-format=%s --time-format=%s --html-report-title='Fluxer traffic' \
+            --ignore-panel=KEYPHRASES >/dev/null 2>&1 \
+          && mv /stats/index.html.tmp /stats/index.html
+          sleep 60
+        done
+    volumes:
+      - ./logs/caddy:/logs:ro
+      - ./logs/stats:/stats
 
 volumes:
   caddy-data:

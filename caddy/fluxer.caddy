@@ -17,9 +17,12 @@ request_body {
 
 @outsider not client_ip {$SITE_ALLOW_CIDRS}
 @admin_outsider {
-	path /admin /admin/*
+	path /admin /admin/* /_stats /_stats/*
 	not client_ip {$ADMIN_ALLOW_CIDRS}
 }
+
+# Traffic dashboard written by the goaccess service.
+@stats path /_stats /_stats/*
 
 # Evaluated top to bottom.
 route {
@@ -29,8 +32,11 @@ route {
 	# Site allowlist (LAN-only until you open it in .env).
 	respond @outsider "Not open yet." 403
 
-	# Admin dashboard only from allowed networks.
+	# Admin dashboard and traffic stats only from allowed networks.
 	respond @admin_outsider 404
+
+	root @stats /srv/stats
+	file_server @stats
 
 	# Websockets (/gateway, /livekit/*) are proxied automatically and are not
 	# subject to idle timeouts. Fluxer sends its own CSP; don't add one here.
