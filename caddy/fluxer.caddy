@@ -26,7 +26,8 @@ request_body {
 # scenarios need and scanners are never banned.
 @scanner {
 	path *.php *.php7 *.asp *.aspx *.jsp *.cgi *.sql *.bak *.old *.swp
-	path /.env* /.git /.git/* /.svn/* /.hg/* /.aws/* /.ssh/* /.vscode/* /.idea/*
+	# Leading * matches in any subfolder too (/laravel/.env, /app/.git/HEAD).
+	path */.env* */.git */.git/* */.svn/* */.hg/* */.aws/* */.ssh/* */.vscode/* */.idea/*
 	path /.DS_Store /.htaccess /.htpasswd
 	path /wp-* /wordpress/* /phpmyadmin* /pma/* /myadmin/* /cgi-bin/*
 	path /server-status /server-info /actuator* /solr/* /owa/* /boaform/*

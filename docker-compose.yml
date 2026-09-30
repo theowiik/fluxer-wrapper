@@ -33,6 +33,7 @@ services:
       - "127.0.0.1:8081:8080"
     volumes:
       - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      - ./crowdsec/profiles.yaml:/etc/crowdsec/profiles.yaml:ro
       - ./logs/caddy:/var/log/caddy:ro
       - crowdsec-data:/var/lib/crowdsec/data
       - crowdsec-config:/etc/crowdsec

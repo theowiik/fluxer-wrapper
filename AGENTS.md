@@ -10,14 +10,16 @@ A reusable wrapper that runs a self-hosted [Fluxer](https://docs.fluxer.app/oper
 
 | Path | Role |
 |---|---|
-| `docker-compose.yml` | Three services: `init` (runs Fluxer's installer), `crowdsec`, `caddy` |
+| `docker-compose.yml` | Services: `init` (runs Fluxer's installer), `crowdsec`, `caddy`, `goaccess` |
 | `init/` | `docker:cli` image + `entrypoint.sh`. Installs Fluxer into `FLUXER_DIR` on the first run; `update` / `rollback` subcommands |
 | `caddy/Caddyfile` | Imports `modes/$PROXY_MODE.caddy` |
 | `caddy/modes/direct.caddy` | Caddy owns 80/443 and gets certificates itself |
 | `caddy/modes/behind.caddy` | Another proxy terminates TLS; plain HTTP on `BEHIND_PORT`, `trusted_proxies` for the client IP |
 | `caddy/fluxer.caddy` | Site body shared by both modes: log, body limit, allowlists, CrowdSec, `reverse_proxy` |
 | `caddy/Dockerfile` | Caddy built with the `caddy-crowdsec-bouncer` module |
-| `crowdsec/acquis.yaml` | Tells CrowdSec to read Caddy's JSON access log |
+| `crowdsec/acquis.yaml` | Tells CrowdSec to read Caddy's JSON access log (`force_inotify`: the log doesn't exist yet when CrowdSec starts) |
+| `crowdsec/profiles.yaml` | Ban length: 24h, one more day each repeat offence |
+| `goaccess` service | Rebuilds the `/_stats/` traffic dashboard from the access log every minute |
 | `Makefile` | Operator commands (`make` lists them) |
 | `docs/isolation.md` | Running the stack in an isolated LXD/Incus/Proxmox instance |
 
@@ -36,6 +38,7 @@ A reusable wrapper that runs a self-hosted [Fluxer](https://docs.fluxer.app/oper
 - **Keep both proxy modes working.** Anything added to the site goes in `caddy/fluxer.caddy`. Use `client_ip` (not `remote_ip` / `{remote_host}`) so behind mode sees the visitor, not the proxy.
 - **Never trust the leftmost `X-Forwarded-For` entry.** Behind mode keeps `trusted_proxies_strict`; without it a visitor can spoof a LAN IP and bypass the allowlists and bans. Test it with a spoofed header after touching the proxy config.
 - **Match Fluxer's reverse-proxy requirements** ([docs](https://docs.fluxer.app/operator/reverse-proxy/)): forward all paths unchanged, websockets, replace `X-Forwarded-For`, bodies ≥ 512 MB, idle sockets for about 1 h, leave `Sec-Fetch-Site` alone, add no CSP. The README table tracks this; update it when you change the proxy.
+- **Scanners must see 404s.** Fluxer's web app answers 200 to any unknown path, and CrowdSec's probing scenarios count 404s. Keep the `@scanner` matcher in `caddy/fluxer.caddy` answering 404, and never add a path Fluxer actually serves.
 - **Safe defaults.** The site starts LAN-only (`SITE_ALLOW_CIDRS=private_ranges`), and `/admin` is allowlisted. Don't loosen defaults.
 - **Line endings are LF** (`.gitattributes`). Makefile recipes need tabs.
 - Match the existing style: short comments that explain *why*, and plain wording in docs.
